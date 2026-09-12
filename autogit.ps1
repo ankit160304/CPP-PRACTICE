@@ -2,34 +2,47 @@ $folder = "C:\Users\Ankit Gupta\Desktop\coding\c++"
 
 Set-Location $folder
 
-Write-Host "Auto GitHub is running..."
-Write-Host "Watching for file changes..."
-
-$watcher = New-Object System.IO.FileSystemWatcher
-$watcher.Path = $folder
-$watcher.IncludeSubdirectories = $true
-$watcher.EnableRaisingEvents = $true
-
-$action = {
-    Start-Sleep -Seconds 10
-
-    Set-Location "C:\Users\Ankit Gupta\Desktop\coding\c++"
-
-    $changes = git status --porcelain
-
-    if ($changes) {
-        git add .
-        git commit -m "Auto update"
-        git push
-        Write-Host "GitHub updated!"
-    }
-}
-
-Register-ObjectEvent $watcher "Changed" -Action $action
-Register-ObjectEvent $watcher "Created" -Action $action
-Register-ObjectEvent $watcher "Deleted" -Action $action
-Register-ObjectEvent $watcher "Renamed" -Action $action
+Write-Host "====================================="
+Write-Host "      Auto GitHub Sync Started"
+Write-Host "====================================="
+Write-Host "Watching: $folder"
+Write-Host "Checking every 10 seconds..."
+Write-Host ""
 
 while ($true) {
-    Start-Sleep -Seconds 5
+
+    try {
+        # Check whether there are any changes
+        $changes = git status --porcelain
+
+        if ($changes) {
+
+            Write-Host "$(Get-Date -Format 'HH:mm:ss') - Changes detected!"
+
+            # Add all new/modified/deleted files
+            git add .
+
+            # Check again after git add
+            $stagedChanges = git diff --cached --quiet
+
+            if ($LASTEXITCODE -ne 0) {
+
+                # Create commit
+                git commit -m "Auto update $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+
+                # Push to GitHub
+                git push origin main
+
+                Write-Host "$(Get-Date -Format 'HH:mm:ss') - GitHub updated successfully!"
+                Write-Host ""
+            }
+        }
+
+    }
+    catch {
+        Write-Host "Error: $($_.Exception.Message)"
+    }
+
+    # Wait 10 seconds before checking again
+    Start-Sleep -Seconds 10
 }
